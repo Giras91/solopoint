@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/database/database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../inventory_providers.dart';
@@ -26,9 +27,33 @@ class ProductListTab extends ConsumerWidget {
             return ListTile(
               title: Text(product.name),
               subtitle: Text('Stock: ${product.stockQuantity}'),
-              trailing: Text(
-                CurrencyFormatter.format(product.price),
-                style: Theme.of(context).textTheme.titleMedium,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    CurrencyFormatter.format(product.price),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.style, size: 20),
+                    tooltip: 'Variants',
+                    onPressed: () {
+                      context.push(
+                        '/inventory/variants/${product.id}?name=${Uri.encodeComponent(product.name)}',
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add_box, size: 20),
+                    tooltip: 'Modifiers',
+                    onPressed: () {
+                      context.push(
+                        '/inventory/modifiers/${product.id}?name=${Uri.encodeComponent(product.name)}',
+                      );
+                    },
+                  ),
+                ],
               ),
               onTap: () {
                 Navigator.of(context).push(

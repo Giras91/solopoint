@@ -3,18 +3,80 @@ import '../../core/database/database.dart';
 
 class CartItem {
   final Product product;
+  final ProductVariant? variant; // Optional variant
+  final List<SelectedModifier> modifiers; // List of selected modifiers
   final int quantity;
 
-  CartItem({required this.product, required this.quantity});
+  CartItem({
+    required this.product,
+    this.variant,
+    this.modifiers = const [],
+    required this.quantity,
+  });
 
-  double get total => product.price * quantity;
+  // Get effective price (variant price if exists, otherwise product price)
+  double get basePrice => variant?.price ?? product.price;
+  
+  // Calculate modifiers total
+  double get modifiersTotal => modifiers.fold(0.0, (sum, mod) => sum + mod.priceDelta);
+  
+  // Unit price including modifiers
+  double get unitPrice => basePrice + modifiersTotal;
+  
+  double get total => unitPrice * quantity;
 
-  CartItem copyWith({Product? product, int? quantity}) {
+  // Unique identifier for cart item (product + variant + modifiers combo)
+  String get uniqueKey {
+    final base = variant != null 
+        ? '${product.id}_${variant!.id}' 
+        : '${product.id}';
+    
+    if (modifiers.isEmpty) return base;
+    
+    final modifierKeys = modifiers.map((m) => '${m.modifierName}_${m.itemName}').join('_');
+    return '${base}_$modifierKeys';
+  }
+
+  // Display name for the item
+  String get displayName {
+    var name = variant != null
+        ? '${product.name} (${variant!.name})'
+        : product.name;
+    
+    if (modifiers.isNotEmpty) {
+      final modifierNames = modifiers.map((m) => m.itemName).join(', ');
+      name += ' + $modifierNames';
+    }
+    
+    return name;
+  }
+
+  CartItem copyWith({
+    Product? product,
+    ProductVariant? variant,
+    List<SelectedModifier>? modifiers,
+    int? quantity,
+  }) {
     return CartItem(
       product: product ?? this.product,
+      variant: variant ?? this.variant,
+      modifiers: modifiers ?? this.modifiers,
       quantity: quantity ?? this.quantity,
     );
   }
+}
+
+/// Represents a selected modifier item
+class SelectedModifier {
+  final String modifierName; // e.g., "Size"
+  final String itemName; // e.g., "Large"
+  final double priceDelta; // e.g., 20.0
+
+  SelectedModifier({
+    required this.modifierName,
+    required this.itemName,
+    required this.priceDelta,
+  });
 }
 
 class CartState {
@@ -32,23 +94,54 @@ class CartState {
 class CartNotifier extends StateNotifier<CartState> {
   CartNotifier() : super(CartState());
 
-  void addToCart(Product product) {
-    final existingIndex = state.items.indexWhere((item) => item.product.id == product.id);
+  // Add product with optional variant and modifiers
+  void addToCart(Product product, {ProductVariant? variant, List<SelectedModifier>? modifiers}) {
+    final mods = modifiers ?? [];
+    
+    final item = CartItem(
+      product: product,
+      variant: variant,
+      modifiers: mods,
+      quantity: 1,
+    );
+    
+    final uniqueKey = item.uniqueKey;
+    
+    final existingIndex = state.items.indexWhere(
+      (item) => item.uniqueKey == uniqueKey
+    );
 
     if (existingIndex >= 0) {
-      // Increment quantity
+      // Increment quantity for exact same item (product + variant + modifiers)
       final newItems = List<CartItem>.from(state.items);
       final oldItem = newItems[existingIndex];
       newItems[existingIndex] = oldItem.copyWith(quantity: oldItem.quantity + 1);
       state = CartState(items: newItems);
     } else {
       // Add new item
-      state = CartState(items: [...state.items, CartItem(product: product, quantity: 1)]);
+      state = CartState(items: [
+        ...state.items,
+        item,
+      ]);
     }
   }
 
-  void removeFromCart(Product product) {
-    final existingIndex = state.items.indexWhere((item) => item.product.id == product.id);
+  void removeFromCart(Product product, {ProductVariant? variant, List<SelectedModifier>? modifiers}) {
+    final mods = modifiers ?? [];
+    
+    final item = CartItem(
+      product: product,
+      variant: variant,
+      modifiers: mods,
+      quantity: 1,
+    );
+    
+    final uniqueKey = item.uniqueKey;
+    
+    final existingIndex = state.items.indexWhere(
+      (item) => item.uniqueKey == uniqueKey
+    );
+    
     if (existingIndex == -1) return;
 
     final newItems = List<CartItem>.from(state.items);

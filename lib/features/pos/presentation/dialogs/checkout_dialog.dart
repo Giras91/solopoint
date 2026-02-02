@@ -66,7 +66,7 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
             customersAsync.when(
               data: (customers) {
                 return DropdownButtonFormField<Customer?>(
-                  value: _selectedCustomer,
+                  initialValue: _selectedCustomer,
                   decoration: const InputDecoration(
                     labelText: 'Customer (Optional)',
                     border: OutlineInputBorder(),

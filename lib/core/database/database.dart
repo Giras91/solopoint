@@ -13,14 +13,20 @@ import 'order_tables.dart';
 import 'restaurant_tables.dart';
 import 'user_tables.dart';
 import 'modifier_tables.dart';
+import 'variant_tables.dart';
+import 'admin_tables.dart';
 
 part 'database.g.dart';
 
 @DriftDatabase(tables: [
   Categories,
   Products,
+  ProductVariants,
+  StockAlerts,
+  StockMovements,
   Orders,
   OrderItems,
+  OrderItemModifiers,
   RestaurantTables,
   Users,
   Customers,
@@ -28,12 +34,16 @@ part 'database.g.dart';
   Modifiers,
   ModifierItems,
   Settings,
+  Roles,
+  AttendanceLogs,
+  InventoryLogs,
+  AuditJournal,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4; // Bump version
+  int get schemaVersion => 7; // Phase 7: Admin tables (Roles, AttendanceLogs, InventoryLogs, AuditJournal)
   
   @override
   MigrationStrategy get migration {
@@ -56,6 +66,31 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(modifiers);
           await m.createTable(modifierItems);
           await m.createTable(settings);
+        }
+        if (from < 5) {
+          // Add new tables for variants and stock management
+          await m.createTable(productVariants);
+          await m.createTable(stockAlerts);
+          await m.createTable(stockMovements);
+          
+          // Add new columns to Orders table
+          await m.addColumn(orders, orders.userId);
+          await m.addColumn(orders, orders.completedAt);
+          
+          // Add new columns to OrderItems table
+          await m.addColumn(orderItems, orderItems.variantId);
+          await m.addColumn(orderItems, orderItems.variantName);
+        }
+        if (from < 6) {
+          // Phase 6: Add order item modifiers table
+          await m.createTable(orderItemModifiers);
+        }
+        if (from < 7) {
+          // Phase 7: Add admin tables for roles, attendance, inventory logs, and audit journal
+          await m.createTable(roles);
+          await m.createTable(attendanceLogs);
+          await m.createTable(inventoryLogs);
+          await m.createTable(auditJournal);
         }
       },
     );

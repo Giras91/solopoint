@@ -1,3 +1,5 @@
+import com.android.build.gradle.LibraryExtension
+
 allprojects {
     repositories {
         google()
@@ -17,6 +19,16 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+subprojects {
+    plugins.withId("com.android.library") {
+        extensions.findByType(LibraryExtension::class.java)?.let { ext ->
+            if (ext.namespace == null) {
+                ext.namespace = "com.extrotarget.solopoint.${project.name}"
+            }
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

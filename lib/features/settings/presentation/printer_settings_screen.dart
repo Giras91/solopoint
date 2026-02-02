@@ -1,10 +1,11 @@
-import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+// import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/printer_service.dart';
 
 // Provider to hold the currently selected device (persisting this would require SharedPreferences not implemented yet)
-final selectedPrinterProvider = StateProvider<BluetoothDevice?>((ref) => null);
+// final selectedPrinterProvider = StateProvider<BluetoothDevice?>((ref) => null);
+final selectedPrinterProvider = StateProvider<dynamic>((ref) => null);
 
 class PrinterSettingsScreen extends ConsumerStatefulWidget {
   const PrinterSettingsScreen({super.key});
@@ -14,7 +15,7 @@ class PrinterSettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
-  List<BluetoothDevice> _devices = [];
+  List<dynamic> _devices = [];
   bool _isLoading = false;
   bool _isConnected = false;
 
@@ -42,7 +43,7 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
      if (mounted) setState(() => _isConnected = connected);
   }
 
-  Future<void> _connect(BluetoothDevice device) async {
+  Future<void> _connect(dynamic device) async {
     final service = ref.read(printerServiceProvider);
     setState(() => _isLoading = true);
     try {

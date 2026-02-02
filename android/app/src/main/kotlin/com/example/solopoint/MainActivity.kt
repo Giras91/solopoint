@@ -1,5 +1,1 @@
-package com.example.solopoint
-
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity : FlutterActivity()
+// Deprecated: old package. This file intentionally left empty.

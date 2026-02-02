@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/database/database.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../inventory/inventory_providers.dart';
+import '../../inventory/variant_repository.dart';
+import '../../inventory/modifier_repository.dart';
 import '../../orders/order_repository.dart';
 import '../../inventory/inventory_repository.dart';
 import '../cart_provider.dart';
@@ -287,8 +289,56 @@ class _ProductCard extends ConsumerWidget {
       elevation: 2,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () {
-          ref.read(cartProvider.notifier).addToCart(product);
+        onTap: () async {
+          // Check if product has variants
+          final variantRepo = ref.read(variantRepositoryProvider);
+          final variants = await variantRepo.watchVariantsByProduct(product.id).first;
+          
+          // Check if product has modifiers
+          final modifierRepo = ref.read(modifierRepositoryProvider);
+          final modifiers = await modifierRepo.getModifiersByProduct(product.id);
+          
+          ProductVariant? selectedVariant;
+          List<SelectedModifier> selectedModifiers = [];
+          
+          // Step 1: Variant selection if available
+          if (variants.isNotEmpty && variants.any((v) => v.isActive)) {
+            if (context.mounted) {
+              selectedVariant = await showDialog<ProductVariant>(
+                context: context,
+                builder: (context) => _VariantSelectionDialog(
+                  product: product,
+                  variants: variants.where((v) => v.isActive).toList(),
+                ),
+              );
+              
+              // User cancelled variant selection
+              if (selectedVariant == null) return;
+            }
+          }
+          
+          // Step 2: Modifier selection if available
+          if (modifiers.isNotEmpty && context.mounted) {
+            final mods = await showDialog<List<SelectedModifier>>(
+              context: context,
+              builder: (context) => _ModifierSelectionDialog(
+                product: product,
+                modifiers: modifiers,
+              ),
+            );
+            
+            // User cancelled modifier selection
+            if (mods == null) return;
+            
+            selectedModifiers = mods;
+          }
+          
+          // Step 3: Add to cart with variant and modifiers
+          ref.read(cartProvider.notifier).addToCart(
+            product,
+            variant: selectedVariant,
+            modifiers: selectedModifiers,
+          );
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -364,9 +414,9 @@ class _CartSidebar extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final item = cart.items[index];
                     return ListTile(
-                      title: Text(item.product.name),
+                      title: Text(item.displayName), // Use displayName to show variant
                       subtitle: Text(
-                          '${item.quantity} x ${CurrencyFormatter.format(item.product.price)}'),
+                          '${item.quantity} x ${CurrencyFormatter.format(item.unitPrice)}'), // Use unitPrice
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -378,13 +428,19 @@ class _CartSidebar extends ConsumerWidget {
                           IconButton(
                             icon: const Icon(Icons.remove_circle_outline),
                             onPressed: () {
-                                ref.read(cartProvider.notifier).removeFromCart(item.product);
+                                ref.read(cartProvider.notifier).removeFromCart(
+                                  item.product,
+                                  variant: item.variant,
+                                );
                             },
                           ),
                         ],
                       ),
                       onTap: () {
-                          ref.read(cartProvider.notifier).addToCart(item.product);
+                          ref.read(cartProvider.notifier).addToCart(
+                            item.product,
+                            variant: item.variant,
+                          );
                       },
                     );
                   },
@@ -536,9 +592,16 @@ class _CartSidebar extends ConsumerWidget {
     return items.map((item) {
       return OrderItemData(
         productId: item.product.id,
-        productName: item.product.name,
+        productName: item.displayName, // Use displayName to include variant
         quantity: item.quantity.toDouble(),
-        unitPrice: item.product.price,
+        unitPrice: item.unitPrice, // Use unitPrice which accounts for variant and modifiers
+        variantId: item.variant?.id,
+        variantName: item.variant?.name,
+        modifiers: item.modifiers.map((mod) => OrderItemModifierData(
+          modifierName: mod.modifierName,
+          itemName: mod.itemName,
+          priceDelta: mod.priceDelta,
+        )).toList(),
       );
     }).toList();
   }
@@ -555,4 +618,238 @@ class _CartSidebar extends ConsumerWidget {
     debugPrint('Receipt for Order #$orderId:');
     debugPrint('Total: \$$total');
     debugPrint('Payment Method: $method');
-  }}
+  }
+}
+
+// Variant Selection Dialog
+class _VariantSelectionDialog extends StatelessWidget {
+  final Product product;
+  final List<ProductVariant> variants;
+
+  const _VariantSelectionDialog({
+    required this.product,
+    required this.variants,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Select ${product.name}'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: variants.length,
+          itemBuilder: (context, index) {
+            final variant = variants[index];
+            return Card(
+              child: ListTile(
+                title: Text(variant.name),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Price: ${CurrencyFormatter.format(variant.price)}'),
+                    if (variant.stockQuantity > 0)
+                      Text('Stock: ${variant.stockQuantity.toStringAsFixed(0)}')
+                    else
+                      const Text(
+                        'Out of stock',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                  ],
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                enabled: variant.stockQuantity > 0,
+                onTap: variant.stockQuantity > 0
+                    ? () => Navigator.pop(context, variant)
+                    : null,
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
+}
+
+// Modifier Selection Dialog
+class _ModifierSelectionDialog extends ConsumerStatefulWidget {
+  final Product product;
+  final List<Modifier> modifiers;
+
+  const _ModifierSelectionDialog({
+    required this.product,
+    required this.modifiers,
+  });
+
+  @override
+  ConsumerState<_ModifierSelectionDialog> createState() =>
+      _ModifierSelectionDialogState();
+}
+
+class _ModifierSelectionDialogState
+    extends ConsumerState<_ModifierSelectionDialog> {
+  final Map<int, List<ModifierItem>> _selectedItems = {};
+  bool _isLoading = true;
+  final Map<int, List<ModifierItem>> _modifierItemsMap = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadModifierItems();
+  }
+
+  Future<void> _loadModifierItems() async {
+    final repo = ref.read(modifierRepositoryProvider);
+    
+    for (final modifier in widget.modifiers) {
+      final items = await repo.getModifierItems(modifier.id);
+      _modifierItemsMap[modifier.id] = items;
+    }
+    
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const AlertDialog(
+        content: SizedBox(
+          height: 100,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    return AlertDialog(
+      title: Text('Customize ${widget.product.name}'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: widget.modifiers.length,
+          itemBuilder: (context, index) {
+            final modifier = widget.modifiers[index];
+            final items = _modifierItemsMap[modifier.id] ?? [];
+            
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      modifier.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      modifier.isMultipleChoice
+                          ? 'Select one or more'
+                          : 'Select one',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...items.map((item) => CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(item.name),
+                          subtitle: item.priceDelta != 0
+                              ? Text(
+                                  item.priceDelta > 0
+                                      ? '+${CurrencyFormatter.format(item.priceDelta)}'
+                                      : CurrencyFormatter.format(item.priceDelta),
+                                  style: TextStyle(
+                                    color: item.priceDelta > 0
+                                        ? Colors.green
+                                        : Colors.red,
+                                  ),
+                                )
+                              : null,
+                          value: _isItemSelected(modifier.id, item),
+                          onChanged: (selected) {
+                            setState(() {
+                              if (selected == true) {
+                                if (modifier.isMultipleChoice) {
+                                  // Multiple choice: add to list
+                                  _selectedItems.putIfAbsent(
+                                      modifier.id, () => []);
+                                  _selectedItems[modifier.id]!.add(item);
+                                } else {
+                                  // Single choice: replace list
+                                  _selectedItems[modifier.id] = [item];
+                                }
+                              } else {
+                                // Remove item
+                                _selectedItems[modifier.id]?.remove(item);
+                                if (_selectedItems[modifier.id]?.isEmpty ??
+                                    false) {
+                                  _selectedItems.remove(modifier.id);
+                                }
+                              }
+                            });
+                          },
+                        )),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, []), // No modifiers
+          child: const Text('Skip'),
+        ),
+        ElevatedButton(
+          onPressed: _confirmSelection,
+          child: const Text('Add to Cart'),
+        ),
+      ],
+    );
+  }
+
+  bool _isItemSelected(int modifierId, ModifierItem item) {
+    return _selectedItems[modifierId]?.contains(item) ?? false;
+  }
+
+  void _confirmSelection() {
+    // Convert selected items to SelectedModifier objects
+    final List<SelectedModifier> selected = [];
+    
+    for (final entry in _selectedItems.entries) {
+      final modifierId = entry.key;
+      final items = entry.value;
+      
+      final modifier = widget.modifiers.firstWhere((m) => m.id == modifierId);
+      
+      for (final item in items) {
+        selected.add(SelectedModifier(
+          modifierName: modifier.name,
+          itemName: item.name,
+          priceDelta: item.priceDelta,
+        ));
+      }
+    }
+    
+    Navigator.pop(context, selected);
+  }
+}

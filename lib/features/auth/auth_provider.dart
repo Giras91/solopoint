@@ -74,6 +74,12 @@ final authProvider = StateNotifierProvider<AuthNotifier, User?>((ref) {
   return AuthNotifier(db);
 });
 
+// Stream of active users for login selection
+final activeUsersProvider = StreamProvider<List<User>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return (db.select(db.users)..where((u) => u.isActive.equals(true))).watch();
+});
+
 // Selector for checking if user is logged in
 final isLoggedInProvider = Provider<bool>((ref) {
   return ref.watch(authProvider) != null;

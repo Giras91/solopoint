@@ -61,24 +61,51 @@ class OrderRepository {
 
       // Insert order items
       for (final item in items) {
-        await _db.into(_db.orderItems).insert(OrderItemsCompanion(
+        final orderItemId = await _db.into(_db.orderItems).insert(OrderItemsCompanion(
           orderId: Value(finalOrderId),
           productId: Value(item.productId),
+          variantId: Value(item.variantId),
           productName: Value(item.productName),
+          variantName: Value(item.variantName),
           quantity: Value(item.quantity),
           unitPrice: Value(item.unitPrice),
           total: Value(item.total),
         ));
 
+        // Insert modifiers for this order item
+        for (final modifier in item.modifiers) {
+          await _db.into(_db.orderItemModifiers).insert(OrderItemModifiersCompanion(
+            orderItemId: Value(orderItemId),
+            modifierName: Value(modifier.modifierName),
+            modifierItemName: Value(modifier.itemName),
+            price: Value(modifier.priceDelta),
+          ));
+        }
+
         // Update stock if tracking is enabled
-        final product = await (_db.select(_db.products)
-          ..where((p) => p.id.equals(item.productId)))
-          .getSingleOrNull();
-        
-        if (product != null && product.trackStock) {
-          final newStock = product.stockQuantity - item.quantity;
-          await (_db.update(_db.products)..where((p) => p.id.equals(item.productId)))
+        if (item.variantId != null) {
+          // Update variant stock
+          final variant = await (_db.select(_db.productVariants)
+            ..where((v) => v.id.equals(item.variantId!)))
+            .getSingleOrNull();
+          
+          if (variant != null) {
+            final newStock = variant.stockQuantity - item.quantity;
+            await (_db.update(_db.productVariants)
+              ..where((v) => v.id.equals(item.variantId!)))
+              .write(ProductVariantsCompanion(stockQuantity: Value(newStock)));
+          }
+        } else {
+          // Update product stock
+          final product = await (_db.select(_db.products)
+            ..where((p) => p.id.equals(item.productId)))
+            .getSingleOrNull();
+          
+          if (product != null && product.trackStock) {
+            final newStock = product.stockQuantity - item.quantity;
+            await (_db.update(_db.products)..where((p) => p.id.equals(item.productId)))
               .write(ProductsCompanion(stockQuantity: Value(newStock)));
+          }
         }
       }
 
@@ -348,15 +375,34 @@ class OrderItemData {
   final String productName;
   final double quantity;
   final double unitPrice;
+  final int? variantId;
+  final String? variantName;
+  final List<OrderItemModifierData> modifiers;
 
   OrderItemData({
     required this.productId,
     required this.productName,
     required this.quantity,
     required this.unitPrice,
+    this.variantId,
+    this.variantName,
+    this.modifiers = const [],
   });
 
   double get total => quantity * unitPrice;
+}
+
+// Helper class for order item modifiers
+class OrderItemModifierData {
+  final String modifierName;
+  final String itemName;
+  final double priceDelta;
+
+  OrderItemModifierData({
+    required this.modifierName,
+    required this.itemName,
+    required this.priceDelta,
+  });
 }
 
 // Helper class to return order with items
