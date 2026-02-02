@@ -349,22 +349,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     }
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      alignment: WrapAlignment.center,
-      children: users.map((user) {
-        final selected = _selectedUser?.id == user.id;
-        return ChoiceChip(
-          label: Text(user.name),
-          selected: selected,
-          onSelected: (_) => _selectUser(user),
-          selectedColor: colorScheme.primaryContainer,
-          labelStyle: textTheme.labelLarge?.copyWith(
-            color: selected ? colorScheme.onPrimaryContainer : colorScheme.onSurface,
-          ),
-        );
-      }).toList(),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        border: Border.all(color: colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+        color: colorScheme.surface,
+      ),
+      child: DropdownButton<User>(
+        value: _selectedUser,
+        hint: Text(
+          'Select a staff member',
+          style: textTheme.bodyLarge?.copyWith(color: colorScheme.outline),
+        ),
+        isExpanded: true,
+        underline: const SizedBox(),
+        items: users.map((user) {
+          return DropdownMenuItem<User>(
+            value: user,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  user.name,
+                  style: textTheme.bodyLarge,
+                ),
+                Text(
+                  user.role.toUpperCase(),
+                  style: textTheme.labelSmall?.copyWith(color: colorScheme.outline),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+        onChanged: (user) {
+          if (user != null) {
+            _selectUser(user);
+          }
+        },
+        style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
+      ),
     );
   }
 
