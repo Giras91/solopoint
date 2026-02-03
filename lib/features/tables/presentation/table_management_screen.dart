@@ -215,7 +215,7 @@ class _TableCard extends ConsumerWidget {
               if (isOccupied && status.orderTotal != null) ...[
                 const SizedBox(height: 4),
                 Text(
-                  '₱${status.orderTotal!.toStringAsFixed(2)}',
+                  'RM ${status.orderTotal!.toStringAsFixed(2)}',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),

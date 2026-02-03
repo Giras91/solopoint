@@ -21,6 +21,7 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
   
   late TextEditingController _nameController;
   late TextEditingController _priceController;
+  late TextEditingController _costController;
   late TextEditingController _skuController;
   late TextEditingController _barcodeController;
   late TextEditingController _stockController;
@@ -33,6 +34,7 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.product?.name ?? '');
     _priceController = TextEditingController(text: widget.product?.price.toString() ?? '');
+    _costController = TextEditingController(text: widget.product?.cost.toString() ?? '');
     _skuController = TextEditingController(text: widget.product?.sku ?? '');
     _barcodeController = TextEditingController(text: widget.product?.barcode ?? '');
     _stockController = TextEditingController(text: widget.product?.stockQuantity.toString() ?? '0');
@@ -44,6 +46,7 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
   void dispose() {
     _nameController.dispose();
     _priceController.dispose();
+    _costController.dispose();
     _skuController.dispose();
     _barcodeController.dispose();
     _stockController.dispose();
@@ -62,6 +65,7 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
       final repository = ref.read(inventoryRepositoryProvider);
       final name = _nameController.text.trim();
       final price = double.tryParse(_priceController.text) ?? 0.0;
+      final cost = double.tryParse(_costController.text) ?? 0.0;
       final stock = double.tryParse(_stockController.text) ?? 0.0;
       final sku = _skuController.text.trim();
       final barcode = _barcodeController.text.trim();
@@ -72,6 +76,7 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
           final updatedProduct = widget.product!.copyWith(
             name: name,
             price: price,
+            cost: cost,
             stockQuantity: stock,
             sku: drift.Value(sku.isEmpty ? null : sku),
             barcode: drift.Value(barcode.isEmpty ? null : barcode),
@@ -84,6 +89,7 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
           final newProduct = ProductsCompanion(
             name: drift.Value(name),
             price: drift.Value(price),
+            cost: drift.Value(cost),
             stockQuantity: drift.Value(stock),
             sku: drift.Value(sku.isEmpty ? null : sku),
             barcode: drift.Value(barcode.isEmpty ? null : barcode),
@@ -160,7 +166,7 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Price & SKU Row
+              // Price & Cost Row
               Row(
                 children: [
                   Expanded(
@@ -180,14 +186,29 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextFormField(
-                      controller: _skuController,
-                      decoration: const InputDecoration(
-                        labelText: 'SKU (Optional)',
-                        border: OutlineInputBorder(),
+                      controller: _costController,
+                      decoration: InputDecoration(
+                        labelText: 'Cost',
+                        prefixText: '${CurrencyFormatter.currencySymbol} ',
+                        border: const OutlineInputBorder(),
                       ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                      ],
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // SKU
+              TextFormField(
+                controller: _skuController,
+                decoration: const InputDecoration(
+                  labelText: 'SKU (Optional)',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 16),
 

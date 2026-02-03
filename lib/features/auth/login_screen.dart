@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/database/database.dart';
 import 'auth_provider.dart';
+import 'attendance_repository.dart';
+import 'user_repository.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -15,7 +16,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   late TextEditingController _pinController;
   bool _isLoading = false;
   String? _errorMessage;
-  User? _selectedUser;
 
   @override
   void initState() {
@@ -57,6 +57,157 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  void _handleClockIn() async {
+    if (_pinController.text.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your PIN');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final user = await ref
+          .read(userRepositoryProvider)
+          .authenticateByPin(_pinController.text);
+
+      if (user != null) {
+        await ref
+            .read(attendanceRepositoryProvider)
+            .clockIn(user.id);
+        
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = null;
+            _pinController.clear();
+          });
+          
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${user.name} clocked in')),
+          );
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Invalid PIN';
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error: ${e.toString()}';
+        });
+      }
+    }
+  }
+
+  void _handleClockOut() async {
+    if (_pinController.text.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your PIN');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final user = await ref
+          .read(userRepositoryProvider)
+          .authenticateByPin(_pinController.text);
+
+      if (user != null) {
+        await ref
+            .read(attendanceRepositoryProvider)
+            .clockOut(user.id);
+        
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = null;
+            _pinController.clear();
+          });
+          
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${user.name} clocked out')),
+          );
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Invalid PIN';
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error: ${e.toString()}';
+        });
+      }
+    }
+  }
+
+  void _handleBreakStart() async {
+    if (_pinController.text.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your PIN');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final user = await ref
+          .read(userRepositoryProvider)
+          .authenticateByPin(_pinController.text);
+
+      if (user != null) {
+        await ref
+            .read(attendanceRepositoryProvider)
+            .startBreak(user.id);
+        
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = null;
+          });
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${user.name} on break')),
+          );
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Invalid PIN';
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error: ${e.toString()}';
+        });
+      }
+    }
+  }
+
   void _addPin(String digit) {
     if (_pinController.text.length < 6) {
       setState(() {
@@ -74,17 +225,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  // ignore: unused_element
   void _clearPin() {
-    if (_pinController.text.isNotEmpty) {
-      setState(() {
-        _pinController.clear();
-      });
-    }
-  }
-
-  void _selectUser(User user) {
     setState(() {
-      _selectedUser = user;
       _pinController.clear();
       _errorMessage = null;
     });
@@ -92,323 +235,260 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final usersAsync = ref.watch(activeUsersProvider);
-
-    final isWide = MediaQuery.of(context).size.width >= 900;
-
-    usersAsync.whenData((users) {
-      if (_selectedUser == null && users.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              _selectedUser = users.first;
-            });
-          }
-        });
-      }
-    });
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width > 600;
 
     return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final content = isWide
-                ? Row(
-                    children: [
-                      Expanded(child: _buildWelcomePanel(colorScheme, textTheme)),
-                      Expanded(
-                        child: _buildLoginPanel(
-                          context: context,
-                          colorScheme: colorScheme,
-                          textTheme: textTheme,
-                          usersAsync: usersAsync,
-                        ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      _buildWelcomePanel(colorScheme, textTheme),
-                      Expanded(
-                        child: _buildLoginPanel(
-                          context: context,
-                          colorScheme: colorScheme,
-                          textTheme: textTheme,
-                          usersAsync: usersAsync,
-                        ),
-                      ),
-                    ],
-                  );
-
-            return Container(
-              padding: const EdgeInsets.all(24),
-              color: colorScheme.surface,
-              child: content,
-            );
-          },
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/bg.jpg'),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withOpacity(0.3),
+              BlendMode.darken,
+            ),
+            onError: (exception, stackTrace) {},
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildWelcomePanel(ColorScheme colorScheme, TextTheme textTheme) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.point_of_sale,
-            size: 96,
-            color: colorScheme.onPrimaryContainer,
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'SoloPoint',
-            style: textTheme.headlineLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onPrimaryContainer,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Fast, offline POS for retail & restaurants',
-            style: textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'Enter your PIN to continue',
-              style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoginPanel({
-    required BuildContext context,
-    required ColorScheme colorScheme,
-    required TextTheme textTheme,
-    required AsyncValue<List<User>> usersAsync,
-  }) {
-    return Center(
-      child: SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Sign in',
-                style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _selectedUser?.name ?? 'Select a user',
-                style: textTheme.titleMedium?.copyWith(color: colorScheme.primary),
-                textAlign: TextAlign.center,
-              ),
-              if (_selectedUser?.role != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  _selectedUser!.role.toUpperCase(),
-                  style: textTheme.labelMedium?.copyWith(color: colorScheme.outline),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-              const SizedBox(height: 20),
-              usersAsync.when(
-                data: (users) => _buildUserSelector(users, colorScheme, textTheme),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, _) => Text('Failed to load users',
-                    style: textTheme.bodyMedium?.copyWith(color: colorScheme.error)),
-              ),
-              const SizedBox(height: 20),
-              Center(child: _buildPinDisplay(_pinController.text, colorScheme)),
-              const SizedBox(height: 16),
-              if (_errorMessage != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _errorMessage!,
-                    style: TextStyle(color: colorScheme.error),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              if (_errorMessage != null) const SizedBox(height: 12),
-              GridView.count(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+        child: SafeArea(
+          child: Center(
+            child: Container(
+              constraints: BoxConstraints(maxWidth: isTablet ? 900 : double.infinity),
+              margin: const EdgeInsets.all(24),
+              child: Row(
                 children: [
-                  ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) {
-                    return _buildKeypadButton(
-                      label: '$num',
-                      onPressed: () => _addPin('$num'),
-                      isLoading: _isLoading,
-                    );
-                  }),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
+                  // Left side - PIN Pad
                   Expanded(
-                    child: _buildKeypadButton(
-                      label: 'Clear',
-                      onPressed: _clearPin,
-                      isLoading: _isLoading,
-                      backgroundColor: colorScheme.surfaceContainerHighest,
-                      labelStyle: textTheme.labelLarge,
+                    flex: isTablet ? 5 : 1,
+                    child: Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.95),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          bottomLeft: Radius.circular(12),
+                          topRight: isTablet ? Radius.zero : Radius.circular(12),
+                          bottomRight: isTablet ? Radius.zero : Radius.circular(12),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // PIN Display with asterisks
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border.all(color: Colors.grey.shade300, width: 2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _pinController.text.isEmpty
+                                    ? '****'
+                                    : '*' * _pinController.text.length,
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w300,
+                                  letterSpacing: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Error Message
+                          if (_errorMessage != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              margin: const EdgeInsets.only(bottom: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.shade200),
+                              ),
+                              child: Text(
+                                _errorMessage!,
+                                style: TextStyle(color: Colors.red.shade700, fontSize: 14),
+                              ),
+                            ),
+
+                          // Numeric Keypad (3x4 grid)
+                          AspectRatio(
+                            aspectRatio: 0.85,
+                            child: GridView.count(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              children: [
+                                // Numbers 1-9
+                                ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((number) {
+                                  return _buildKeypadButton(
+                                    label: '$number',
+                                    onPressed: () => _addPin('$number'),
+                                    isLoading: _isLoading,
+                                  );
+                                }),
+                                // Back button
+                                _buildKeypadButton(
+                                  label: '←',
+                                  onPressed: _removeLastPin,
+                                  isLoading: _isLoading,
+                                  backgroundColor: Colors.grey.shade200,
+                                ),
+                                // Zero
+                                _buildKeypadButton(
+                                  label: '0',
+                                  onPressed: () => _addPin('0'),
+                                  isLoading: _isLoading,
+                                ),
+                                // Clear button
+                                _buildKeypadButton(
+                                  label: '×',
+                                  onPressed: () => setState(() => _pinController.clear()),
+                                  isLoading: _isLoading,
+                                  backgroundColor: Colors.grey.shade200,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildKeypadButton(
-                      label: '0',
-                      onPressed: () => _addPin('0'),
-                      isLoading: _isLoading,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildKeypadButton(
-                      label: '⌫',
-                      onPressed: _removeLastPin,
-                      isLoading: _isLoading,
-                      backgroundColor: colorScheme.surfaceContainerHighest,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _isLoading ? null : _handleLogin,
-                icon: _isLoading
-                    ? SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            colorScheme.onPrimary,
+
+                  // Right side - Logo and Action Buttons
+                  if (isTablet)
+                    Expanded(
+                      flex: 4,
+                      child: Container(
+                        padding: const EdgeInsets.all(48),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade800.withOpacity(0.95),
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(12),
+                            bottomRight: Radius.circular(12),
                           ),
                         ),
-                      )
-                    : const Icon(Icons.login),
-                label: const Text('Login'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
-                ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Logo and Title
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.grid_3x3,
+                                  color: Color(0xFFFDB825),
+                                  size: 48,
+                                ),
+                                const SizedBox(width: 16),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    RichText(
+                                      text: TextSpan(
+                                        children: [
+                                          TextSpan(
+                                            text: 'SOLO',
+                                            style: TextStyle(
+                                              fontSize: 36,
+                                              fontWeight: FontWeight.w300,
+                                              color: Colors.white,
+                                              letterSpacing: 2,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text: 'POINT',
+                                            style: TextStyle(
+                                              fontSize: 36,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFFFDB825),
+                                              letterSpacing: 2,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Text(
+                                      'SALES REVOLUTION',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w300,
+                                        color: Colors.white70,
+                                        letterSpacing: 4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 48),
+
+                            // Action Buttons
+                            _buildActionButton(
+                              label: 'LOGIN',
+                              onPressed: _isLoading ? null : _handleLogin,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildActionButton(
+                              label: 'CLOCK IN',
+                              onPressed: _isLoading ? null : _handleClockIn,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildActionButton(
+                              label: 'CLOCK OUT',
+                              onPressed: _isLoading ? null : _handleClockOut,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildActionButton(
+                              label: 'BREAK',
+                              onPressed: _isLoading ? null : _handleBreakStart,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUserSelector(
-    List<User> users,
-    ColorScheme colorScheme,
-    TextTheme textTheme,
-  ) {
-    if (users.isEmpty) {
-      return Text(
-        'No active users found',
-        style: textTheme.bodyMedium?.copyWith(color: colorScheme.outline),
-        textAlign: TextAlign.center,
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        border: Border.all(color: colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-        color: colorScheme.surface,
-      ),
-      child: DropdownButton<User>(
-        value: _selectedUser,
-        hint: Text(
-          'Select a staff member',
-          style: textTheme.bodyLarge?.copyWith(color: colorScheme.outline),
-        ),
-        isExpanded: true,
-        underline: const SizedBox(),
-        items: users.map((user) {
-          return DropdownMenuItem<User>(
-            value: user,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  user.name,
-                  style: textTheme.bodyLarge,
-                ),
-                Text(
-                  user.role.toUpperCase(),
-                  style: textTheme.labelSmall?.copyWith(color: colorScheme.outline),
-                ),
-              ],
             ),
-          );
-        }).toList(),
-        onChanged: (user) {
-          if (user != null) {
-            _selectUser(user);
-          }
-        },
-        style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildPinDisplay(String pin, ColorScheme colorScheme) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(6, (index) {
-        final filled = index < pin.length;
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 6),
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: filled ? colorScheme.primary : Colors.transparent,
-            border: Border.all(color: colorScheme.outlineVariant),
+  Widget _buildActionButton({
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 60,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Color(0xFFFDB825),
+          foregroundColor: Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
           ),
-        );
-      }),
+          elevation: 0,
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
     );
   }
 
@@ -417,21 +497,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     required VoidCallback onPressed,
     required bool isLoading,
     Color? backgroundColor,
-    TextStyle? labelStyle,
   }) {
-    return SizedBox(
-      height: 60,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+    return ElevatedButton(
+      onPressed: isLoading ? null : onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor ?? Colors.white,
+        foregroundColor: Colors.grey.shade800,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: Colors.grey.shade300, width: 1),
         ),
-        child: Text(
-          label,
-          style: labelStyle ?? const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+        elevation: 1,
+        shadowColor: Colors.black12,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 32,
+          fontWeight: label == '←' || label == '×' ? FontWeight.w300 : FontWeight.w400,
+          color: Colors.grey.shade700,
         ),
       ),
     );

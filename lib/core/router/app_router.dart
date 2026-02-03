@@ -5,20 +5,32 @@ import '../../features/auth/login_screen.dart';
 import '../../features/auth/auth_provider.dart';
 import '../../features/auth/presentation/user_management_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/dashboard/admin_dashboard_screen.dart';
 import '../../features/inventory/presentation/inventory_screen.dart';
 import '../../features/inventory/presentation/product_variants_screen.dart';
 import '../../features/inventory/presentation/modifier_management_screen.dart';
 import '../../features/inventory/presentation/low_stock_alerts_screen.dart';
+import '../../features/forecasting/presentation/forecasting_screen.dart';
+import '../../features/employee_performance/presentation/employee_performance_screen.dart';
+import '../../features/feedback/presentation/feedback_screen.dart';
+import '../../features/kds/presentation/kds_screen.dart';
 import '../../features/pos/presentation/pos_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
+import '../../features/reports/presentation/analytics_dashboard_screen.dart';
+import '../../features/reports/presentation/report_export_screen.dart';
+import '../../features/reports/presentation/profit_analytics_screen.dart';
 import '../../features/tables/presentation/table_screen.dart';
 import '../../features/tables/presentation/table_management_screen.dart';
 import '../../features/settings/presentation/printer_settings_screen.dart';
-import '../../features/settings/presentation/backup_restore_screen.dart';
+import '../../features/settings/presentation/printer_setup_screen.dart';
+import '../../features/backup/presentation/backup_settings_screen.dart';
+import '../../features/settings/presentation/language_settings_screen.dart';
 import '../../features/customers/presentation/customer_screen.dart';
 import '../../features/auth/presentation/attendance_logs_screen.dart';
 import '../../features/auth/presentation/audit_journal_screen.dart';
 import '../../features/inventory/presentation/inventory_logs_screen.dart';
+import '../../features/stores/presentation/store_management_screen.dart';
+import '../../features/stores/presentation/sync_control_screen.dart';
 
 // Create a key to maintain navigation state
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -37,6 +49,12 @@ final goRouter = GoRouter(
       builder: (context, state) => const LoginScreen(),
     ),
     
+    // Admin Dashboard (restricted to admin/manager)
+    GoRoute(
+      path: '/admin',
+      builder: (context, state) => const AdminDashboardScreen(),
+    ),
+    
     // Protected Routes (Dashboard and children)
     GoRoute(
       path: '/',
@@ -49,6 +67,10 @@ final goRouter = GoRouter(
         GoRoute(
           path: 'table-management',
           builder: (context, state) => const TableManagementScreen(),
+        ),
+        GoRoute(
+          path: 'kitchen',
+          builder: (context, state) => const KdsScreen(),
         ),
         GoRoute(
           path: 'inventory',
@@ -81,6 +103,18 @@ final goRouter = GoRouter(
           builder: (context, state) => const LowStockAlertsScreen(),
         ),
         GoRoute(
+          path: 'forecasting',
+          builder: (context, state) => const ForecastingScreen(),
+        ),
+        GoRoute(
+          path: 'employees/performance',
+          builder: (context, state) => const EmployeePerformanceScreen(),
+        ),
+        GoRoute(
+          path: 'feedback',
+          builder: (context, state) => const FeedbackScreen(),
+        ),
+        GoRoute(
           path: 'inventory/logs',
           builder: (context, state) => const InventoryLogsScreen(),
         ),
@@ -93,6 +127,18 @@ final goRouter = GoRouter(
           builder: (context, state) => const ReportsScreen(),
         ),
         GoRoute(
+          path: 'analytics',
+          builder: (context, state) => const AnalyticsDashboardScreen(),
+        ),
+        GoRoute(
+          path: 'analytics/profit',
+          builder: (context, state) => const ProfitAnalyticsScreen(),
+        ),
+        GoRoute(
+          path: 'reports/export',
+          builder: (context, state) => const ReportExportScreen(),
+        ),
+        GoRoute(
           path: 'customers',
           builder: (context, state) => const CustomerScreen(),
         ),
@@ -101,8 +147,16 @@ final goRouter = GoRouter(
           builder: (context, state) => const PrinterSettingsScreen(),
         ),
         GoRoute(
+          path: 'settings/printer/setup',
+          builder: (context, state) => const PrinterSetupScreen(),
+        ),
+        GoRoute(
           path: 'settings/backup',
-          builder: (context, state) => const BackupRestoreScreen(),
+          builder: (context, state) => const BackupSettingsScreen(),
+        ),
+        GoRoute(
+          path: 'settings/language',
+          builder: (context, state) => const LanguageSettingsScreen(),
         ),
         GoRoute(
           path: 'settings/attendance',
@@ -116,12 +170,20 @@ final goRouter = GoRouter(
           path: 'settings/users',
           builder: (context, state) => const UserManagementScreen(),
         ),
+        GoRoute(
+          path: 'settings/stores',
+          builder: (context, state) => const StoreManagementScreen(),
+        ),
+        GoRoute(
+          path: 'settings/sync',
+          builder: (context, state) => const SyncControlScreen(),
+        ),
       ],
     ),
   ],
 );
 
-/// Router Listener for handling auth state changes
+/// Router Listener for handling auth state changes and role-based navigation
 class RouterListener extends ConsumerWidget {
   final Widget child;
 
@@ -132,11 +194,20 @@ class RouterListener extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    String defaultHomeForRole(String? role) {
-      if (role == 'cashier' || role == 'staff') {
-        return '/pos';
+    /// Determine the home route based on user role
+    String getHomeRouteForRole(String? role) {
+      if (role == null) return '/login';
+      
+      switch (role.toLowerCase()) {
+        case 'admin':
+        case 'manager':
+          return '/admin';
+        case 'cashier':
+        case 'staff':
+          return '/pos';
+        default:
+          return '/';
       }
-      return '/';
     }
 
     // Watch auth state and handle logout
@@ -144,6 +215,10 @@ class RouterListener extends ConsumerWidget {
       if (next == null && previous != null) {
         // User logged out, go to login
         context.go('/login');
+      } else if (next != null && previous == null) {
+        // User just logged in, redirect to appropriate home based on role
+        final homeRoute = getHomeRouteForRole(next.role);
+        context.go(homeRoute);
       }
     });
 

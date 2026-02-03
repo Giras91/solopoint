@@ -1,6 +1,7 @@
 // import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../data/printer_service.dart';
 
 // Provider to hold the currently selected device (persisting this would require SharedPreferences not implemented yet)
@@ -91,6 +92,19 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                // New Printer Setup Card
+                Card(
+                  margin: const EdgeInsets.all(16),
+                  child: ListTile(
+                    leading: const Icon(Icons.settings, color: Colors.blue),
+                    title: const Text('Advanced Printer Setup'),
+                    subtitle: const Text('USB, Network & Bluetooth Printers'),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () => context.push('/settings/printer/setup'),
+                  ),
+                ),
+                const Divider(),
+                
                 if (selectedDevice != null)
                   Container(
                     color: _isConnected ? Colors.green.shade100 : Colors.red.shade100,
@@ -107,7 +121,13 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                       ),
                     ),
                   ),
-                const Divider(),
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Bluetooth Printers (Legacy)',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
                 Expanded(
                   child: _devices.isEmpty
                       ? const Center(child: Text('No bonded Bluetooth devices found.\nPlease pair your printer in Android Settings first.'))

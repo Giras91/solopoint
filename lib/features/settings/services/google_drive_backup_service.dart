@@ -45,7 +45,7 @@ class GoogleDriveBackupService {
   /// Get the local database file path
   Future<File> _getDatabaseFile() async {
     final docDir = await getApplicationDocumentsDirectory();
-    return File(File(docDir.path).path + Platform.pathSeparator + 'solopoint.sqlite');
+    return File('${docDir.path}${Platform.pathSeparator}solopoint.sqlite');
   }
 
   /// Authenticate with Google

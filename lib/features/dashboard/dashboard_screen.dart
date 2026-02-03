@@ -113,9 +113,21 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   if (isAdminOrManager)
                     _DashboardCard(
+                      icon: Icons.kitchen,
+                      label: 'Kitchen Display',
+                      onTap: () => context.go('/kitchen'),
+                    ),
+                  if (isAdminOrManager)
+                    _DashboardCard(
                       icon: Icons.inventory,
                       label: 'Inventory',
                       onTap: () => context.go('/inventory'),
+                    ),
+                  if (isAdminOrManager)
+                    _DashboardCard(
+                      icon: Icons.auto_graph,
+                      label: 'Forecasting',
+                      onTap: () => context.go('/forecasting'),
                     ),
                   if (isAdminOrManager)
                     _DashboardCard(
@@ -143,6 +155,36 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   if (isAdminOrManager)
                     _DashboardCard(
+                      icon: Icons.analytics,
+                      label: 'Analytics',
+                      onTap: () => context.go('/analytics'),
+                    ),
+                  if (isAdminOrManager)
+                    _DashboardCard(
+                      icon: Icons.badge,
+                      label: 'Employee Performance',
+                      onTap: () => context.go('/employees/performance'),
+                    ),
+                  if (isAdminOrManager)
+                    _DashboardCard(
+                      icon: Icons.ssid_chart,
+                      label: 'Profit Analytics',
+                      onTap: () => context.go('/analytics/profit'),
+                    ),
+                  if (isAdminOrManager)
+                    _DashboardCard(
+                      icon: Icons.reviews,
+                      label: 'Customer Feedback',
+                      onTap: () => context.go('/feedback'),
+                    ),
+                  if (isAdminOrManager)
+                    _DashboardCard(
+                      icon: Icons.file_download,
+                      label: 'Export Reports',
+                      onTap: () => context.go('/reports/export'),
+                    ),
+                  if (isAdminOrManager)
+                    _DashboardCard(
                       icon: Icons.schedule,
                       label: 'Attendance',
                       onTap: () => context.go('/settings/attendance'),
@@ -165,11 +207,29 @@ class DashboardScreen extends ConsumerWidget {
                       label: 'Printer',
                       onTap: () => context.go('/settings/printer'),
                     ),
+                  if (isAdminOrManager)
+                    _DashboardCard(
+                      icon: Icons.language,
+                      label: 'Language',
+                      onTap: () => context.go('/settings/language'),
+                    ),
                   if (isAdmin)
                     _DashboardCard(
                       icon: Icons.backup,
                       label: 'Backup',
                       onTap: () => context.go('/settings/backup'),
+                    ),
+                  if (isAdmin)
+                    _DashboardCard(
+                      icon: Icons.store,
+                      label: 'Stores',
+                      onTap: () => context.go('/settings/stores'),
+                    ),
+                  if (isAdmin)
+                    _DashboardCard(
+                      icon: Icons.sync,
+                      label: 'Sync Control',
+                      onTap: () => context.go('/settings/sync'),
                     ),
                 ],
               ),

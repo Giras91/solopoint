@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+// ignore: depend_on_referenced_packages
 import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
@@ -15,6 +16,9 @@ import 'user_tables.dart';
 import 'modifier_tables.dart';
 import 'variant_tables.dart';
 import 'admin_tables.dart';
+import 'store_tables.dart';
+import 'split_bill_tables.dart';
+import 'feedback_tables.dart';
 
 part 'database.g.dart';
 
@@ -38,12 +42,19 @@ part 'database.g.dart';
   AttendanceLogs,
   InventoryLogs,
   AuditJournal,
+  Stores,
+  SyncLogs,
+  ChangeQueue,
+  SplitBills,
+  SplitBillItems,
+  SplitBillPayments,
+  CustomerFeedbacks,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7; // Phase 7: Admin tables (Roles, AttendanceLogs, InventoryLogs, AuditJournal)
+  int get schemaVersion => 9; // Phase 12: Customer feedback
   
   @override
   MigrationStrategy get migration {
@@ -91,6 +102,22 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(attendanceLogs);
           await m.createTable(inventoryLogs);
           await m.createTable(auditJournal);
+        }
+        if (from < 8) {
+          // Phase 10: Add multi-store and bill splitting tables
+          await m.createTable(stores);
+          await m.createTable(syncLogs);
+          await m.createTable(changeQueue);
+          await m.createTable(splitBills);
+          await m.createTable(splitBillItems);
+          await m.createTable(splitBillPayments);
+          
+          // Add storeId to Orders table
+          await m.addColumn(orders, orders.storeId);
+        }
+        if (from < 9) {
+          // Phase 12: Add customer feedback table
+          await m.createTable(customerFeedbacks);
         }
       },
     );

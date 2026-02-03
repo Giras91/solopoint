@@ -381,6 +381,7 @@ class _GoogleDriveBackupSectionState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ignore: unused_result
       ref.refresh(backupMetadataProvider);
     });
   }
@@ -493,7 +494,7 @@ class _GoogleDriveBackupSectionState
                           padding: EdgeInsets.only(bottom: 12),
                           child: LinearProgressIndicator(),
                         ),
-                        error: (_, __) => const SizedBox.shrink(),
+                        error: (error, stack) => const SizedBox.shrink(),
                       ),
 
                       // Action buttons
@@ -514,6 +515,7 @@ class _GoogleDriveBackupSectionState
                                   )
                                 : ElevatedButton.icon(
                                     onPressed: () {
+                                      // ignore: unused_result
                                       ref
                                           .read(backupStateProvider.notifier)
                                           .performBackup();
@@ -539,7 +541,10 @@ class _GoogleDriveBackupSectionState
                                 : OutlinedButton.icon(
                                     onPressed: metadata.hasValue &&
                                             metadata.value != null
-                                        ? () => _showRestoreConfirmation(context)
+                                        ? () {
+                                            // ignore: unused_result
+                                            _showRestoreConfirmation(context);
+                                          }
                                         : null,
                                     icon: const Icon(Icons.cloud_download),
                                     label: const Text('Restore'),
@@ -551,6 +556,7 @@ class _GoogleDriveBackupSectionState
                       OutlinedButton.icon(
                         onPressed: () {
                           ref.read(backupStateProvider.notifier).signOut();
+                          // ignore: unused_result
                           ref.refresh(googleSignInAccountProvider);
                         },
                         icon: const Icon(Icons.logout),
@@ -566,11 +572,14 @@ class _GoogleDriveBackupSectionState
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () async {
+                        // ignore: unused_result
                         final success = await ref
                             .read(backupStateProvider.notifier)
                             .signInWithGoogle();
                         if (success && mounted) {
+                          // ignore: unused_result
                           ref.refresh(googleSignInAccountProvider);
+                          // ignore: unused_result
                           ref.refresh(backupMetadataProvider);
                         }
                       },

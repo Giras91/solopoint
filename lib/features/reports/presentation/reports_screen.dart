@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../inventory/inventory_providers.dart';
 import '../../customers/customer_providers.dart';
-import '../../settings/data/printer_service.dart';
 import '../report_providers.dart';
 import '../services/pdf_export_service.dart';
 import '../services/csv_export_service.dart';
@@ -431,165 +430,23 @@ class ReportsScreen extends ConsumerWidget {
   }
 
   Future<void> _printXReport(BuildContext context, WidgetRef ref) async {
-    final printerService = ref.read(printerServiceProvider);
-    
-    // Check printer connection
-    if (!(await printerService.isConnected)) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Printer not connected. Please connect in Settings.'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-      return;
-    }
-
-    if (context.mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    try {
-      // Gather report data
-      final totalSales = await ref.read(filteredSalesProvider.future);
-      final orders = await ref.read(filteredOrdersProvider.future);
-      final paymentStats = await ref.read(filteredPaymentMethodStatsProvider.future);
-      final categoryStats = await ref.read(categorySalesProvider.future);
-      final topProducts = await ref.read(topProductsProvider.future);
-
-      // Convert top products to map format
-      final topProductsList = topProducts.map((p) => {
-        'name': p.productName,
-        'quantity': p.totalQuantity.toInt(),
-        'total': p.totalRevenue,
-      }).toList();
-
-      await printerService.printXReport(
-        shopName: 'SoloPoint POS',
-        reportDate: DateTime.now(),
-        totalSales: totalSales,
-        totalTransactions: orders.length,
-        paymentMethodTotals: paymentStats,
-        categoryTotals: categoryStats,
-        topProducts: topProductsList,
-      );
-
-      if (context.mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('X-Report printed successfully'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) Navigator.pop(context);
-      rethrow;
-    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Use Printer Settings to print reports.'),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   Future<void> _printZReport(BuildContext context, WidgetRef ref) async {
-    final printerService = ref.read(printerServiceProvider);
-    
-    // Check printer connection
-    if (!(await printerService.isConnected)) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Printer not connected. Please connect in Settings.'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-      return;
-    }
-
-    // Show confirmation dialog for Z-Report
-    if (context.mounted) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Confirm Z-Report'),
-          content: const Text(
-            'Z-Report is used for end-of-day closing. This will generate a daily sales summary.\n\nProceed with printing?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Print'),
-            ),
-          ],
-        ),
-      );
-
-      if (confirmed != true) return;
-    }
-
-    if (context.mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    try {
-      final selectedRange = ref.read(selectedDateRangeProvider);
-      final dateRange = _getDateRange(selectedRange);
-      
-      // Gather report data
-      final totalSales = await ref.read(filteredSalesProvider.future);
-      final orders = await ref.read(filteredOrdersProvider.future);
-      final paymentStats = await ref.read(filteredPaymentMethodStatsProvider.future);
-      final categoryStats = await ref.read(categorySalesProvider.future);
-      final topProducts = await ref.read(topProductsProvider.future);
-
-      // Convert top products to map format
-      final topProductsList = topProducts.map((p) => {
-        'name': p.productName,
-        'quantity': p.totalQuantity.toInt(),
-        'total': p.totalRevenue,
-      }).toList();
-
-      // Generate a simple report number based on current date
-      final reportNumber = int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
-
-      await printerService.printZReport(
-        shopName: 'SoloPoint POS',
-        reportDate: DateTime.now(),
-        startDate: dateRange.$1,
-        endDate: dateRange.$2,
-        totalSales: totalSales,
-        totalTransactions: orders.length,
-        paymentMethodTotals: paymentStats,
-        categoryTotals: categoryStats,
-        topProducts: topProductsList,
-        reportNumber: reportNumber,
-      );
-
-      if (context.mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Z-Report printed successfully'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) Navigator.pop(context);
-      rethrow;
-    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Use Printer Settings to print reports.'),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   (DateTime, DateTime) _getDateRange(DateRangeFilter filter) {
@@ -726,7 +583,7 @@ class _TopProductsList extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: products.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final product = products[index];
               return ListTile(
@@ -779,7 +636,7 @@ class _RecentOrdersList extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: orders.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final order = orders[index];
               return ListTile(

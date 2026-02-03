@@ -90,7 +90,7 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
                 );
               },
               loading: () => const SizedBox(height: 60),
-              error: (_, __) => const SizedBox(height: 60),
+              error: (error, stack) => const SizedBox(height: 60),
             ),
             const SizedBox(height: 20),
 
@@ -101,7 +101,7 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
                 ButtonSegment(value: 'card', label: Text('Card'), icon: Icon(Icons.credit_card)),
                 ButtonSegment(value: 'qr', label: Text('QR'), icon: Icon(Icons.qr_code)),
               ],
-              selected: {_selectedMethod},
+              selected: <String>{_selectedMethod},
               onSelectionChanged: (newSelection) {
                 setState(() {
                   _selectedMethod = newSelection.first;

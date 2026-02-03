@@ -19,7 +19,7 @@ final isGoogleSignedInProvider = StreamProvider<bool>((ref) {
   return account.when(
     data: (account) => Stream.value(account != null),
     loading: () => Stream.value(false),
-    error: (_, __) => Stream.value(false),
+    error: (error, stack) => Stream.value(false),
   );
 });
 

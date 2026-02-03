@@ -27,7 +27,7 @@ Future<void> initializeDatabaseDefaults(AppDatabase database) async {
         isActive: const Value(true),
       ),
     );
-
+    // ignore: avoid_print
     print('✓ Default users initialized');
   }
 
@@ -45,7 +45,7 @@ Future<void> initializeDatabaseDefaults(AppDatabase database) async {
     await database.into(database.settings).insert(
       SettingsCompanion(
         key: const Value('currency_symbol'),
-        value: const Value('₱'), // Philippine Peso (change as needed)
+        value: const Value('RM'), // Malaysian Ringgit
       ),
     );
 
@@ -55,7 +55,7 @@ Future<void> initializeDatabaseDefaults(AppDatabase database) async {
         value: const Value('SoloPoint POS'),
       ),
     );
-
+    // ignore: avoid_print
     print('✓ Default settings initialized');
   }
 
@@ -132,7 +132,7 @@ Future<void> initializeDatabaseDefaults(AppDatabase database) async {
         trackStock: const Value(true),
       ),
     );
-
+    // ignore: avoid_print
     print('✓ Default categories and products initialized');
   }
 }

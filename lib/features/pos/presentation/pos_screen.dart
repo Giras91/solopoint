@@ -10,6 +10,8 @@ import '../../orders/order_repository.dart';
 import '../../inventory/inventory_repository.dart';
 import '../cart_provider.dart';
 import 'dialogs/checkout_dialog.dart';
+import '../../split_bills/presentation/split_bill_dialog.dart';
+import '../../split_bills/presentation/split_bill_management_screen.dart';
 
 class PosScreen extends ConsumerStatefulWidget {
   final RestaurantTable? table; // Optional table context
@@ -410,7 +412,7 @@ class _CartSidebar extends ConsumerWidget {
               ? const Center(child: Text('Cart is empty'))
               : ListView.separated(
                   itemCount: cart.items.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (context, index) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final item = cart.items[index];
                     return ListTile(
@@ -454,7 +456,7 @@ class _CartSidebar extends ConsumerWidget {
             color: Theme.of(context).colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 4,
                 offset: const Offset(0, -2),
               ),
@@ -512,6 +514,75 @@ class _CartSidebar extends ConsumerWidget {
                       label: const Text('HOLD BILL / SEND TO KITCHEN'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Split Bill Button (Only for restaurant mode with tables)
+              if (table != null && cart.items.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final orderRepo = ref.read(orderRepositoryProvider);
+                        final orderItems = _mapCartToOrderItems(cart.items);
+                        
+                        try {
+                          // Save order first if not already saved
+                          final orderId = await orderRepo.saveOrder(
+                            orderId: currentOrderId,
+                            total: cart.total,
+                            items: orderItems,
+                            tableId: table!.id,
+                            status: 'pending',
+                          );
+
+                          if (context.mounted) {
+                            // Get full order and order items for split bill dialog
+                            final database = ref.read(databaseProvider);
+                            final order = await (database.select(database.orders)
+                                  ..where((tbl) => tbl.id.equals(orderId)))
+                                .getSingle();
+                            final items = await (database.select(database.orderItems)
+                                  ..where((tbl) => tbl.orderId.equals(orderId)))
+                                .get();
+
+                            // Show split bill dialog
+                            final splitBillId = await showDialog<int>(
+                              context: context,
+                              builder: (dialogContext) => SplitBillDialog(
+                                order: order,
+                                orderItems: items,
+                              ),
+                            );
+
+                            if (splitBillId != null && context.mounted) {
+                              // Navigate to split bill management
+                              await Navigator.of(context).push<void>(
+                                MaterialPageRoute<void>(
+                                  builder: (navContext) => SplitBillManagementScreen(
+                                    splitBillId: splitBillId,
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.call_split),
+                      label: const Text('SPLIT BILL'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        foregroundColor: Colors.orange,
                       ),
                     ),
                   ),

@@ -14,6 +14,7 @@ class Orders extends Table {
   IntColumn get tableId => integer().nullable()();
   IntColumn get customerId => integer().nullable()();
   IntColumn get userId => integer().nullable()(); // User who created the order
+  IntColumn get storeId => integer().nullable()(); // Store/Branch where order was created
   DateTimeColumn get completedAt => dateTime().nullable()(); // When order was completed
 }
 

@@ -75,7 +75,7 @@ class _CustomerScreenState extends ConsumerState<CustomerScreen> {
                 }
                 return ListView.separated(
                   itemCount: customers.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (context, index) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final customer = customers[index];
                     return ListTile(

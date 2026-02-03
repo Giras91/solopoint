@@ -137,6 +137,7 @@ class PdfExportService {
   }
 
   static pw.Widget _buildPaymentMethodsTable(Map<String, double> paymentMethodTotals) {
+    // ignore: deprecated_member_use
     return pw.Table.fromTextArray(
       headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
       headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
@@ -155,6 +156,7 @@ class PdfExportService {
   }
 
   static pw.Widget _buildTopProductsTable(List<ProductSalesData> topProducts) {
+    // ignore: deprecated_member_use
     return pw.Table.fromTextArray(
       headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
       headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
@@ -171,6 +173,7 @@ class PdfExportService {
   }
 
   static pw.Widget _buildOrdersTable(List<Order> orders) {
+    // ignore: deprecated_member_use
     return pw.Table.fromTextArray(
       headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
       headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
@@ -282,6 +285,7 @@ class PdfExportService {
   }
 
   static pw.Widget _buildInventoryTable(List<Product> products, Map<int, String> categoryNames) {
+    // ignore: deprecated_member_use
     return pw.Table.fromTextArray(
       headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
       headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
@@ -399,6 +403,7 @@ class PdfExportService {
   }
 
   static pw.Widget _buildCustomersTable(List<Customer> customers) {
+    // ignore: deprecated_member_use
     return pw.Table.fromTextArray(
       headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
       headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
